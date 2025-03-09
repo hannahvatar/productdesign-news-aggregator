@@ -2,7 +2,7 @@
 require_relative 'base_scraper'
 
 module Scrapers
-  class NNGroupScraper < BaseScraper
+  class NnGroupScraper < BaseScraper  # Changed from NNGroupScraper to NnGroupScraper
     SOURCE_NAME = "NN/g UX Research"
     BASE_URL = "https://www.nngroup.com/articles/"
 
