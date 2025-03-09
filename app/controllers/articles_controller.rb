@@ -1,21 +1,24 @@
 class ArticlesController < ApplicationController
   skip_before_action :authenticate_user!, only: [:index, :show, :scrape]
 
-  # The rest of your controller code stays the same
   def index
     @articles = Article.order(published_at: :desc)
 
-    if params[:source].present?
+    if params[:source].present? && params[:source] != "All Sources"
       @articles = @articles.where(source: params[:source])
     end
 
     if params[:start_date].present? && params[:end_date].present?
-      start_date = Date.parse(params[:start_date])
-      end_date = Date.parse(params[:end_date])
-      @articles = @articles.where(published_at: start_date..end_date)
+      begin
+        start_date = Date.parse(params[:start_date])
+        end_date = Date.parse(params[:end_date])
+        @articles = @articles.where(published_at: start_date..end_date)
+      rescue ArgumentError => e
+        flash.now[:alert] = "Invalid date format. Using default date range."
+      end
     end
 
-    @sources = Article.distinct.pluck(:source)
+    @sources = Article.distinct.pluck(:source).sort
   end
 
   def show
