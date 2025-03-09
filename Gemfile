@@ -73,3 +73,7 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+gem "httparty", "~> 0.22.0"
+
+gem "chronic", "~> 0.10.2"
