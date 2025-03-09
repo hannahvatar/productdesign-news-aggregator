@@ -79,6 +79,4 @@ test:
 #
 production:
   <<: *default
-  database: productdesign_news_aggregator_production
-  username: productdesign_news_aggregator
-  password: <%= ENV["PRODUCTDESIGN_NEWS_AGGREGATOR_DATABASE_PASSWORD"] %>
+  url: <%= ENV['DATABASE_URL'] %>
