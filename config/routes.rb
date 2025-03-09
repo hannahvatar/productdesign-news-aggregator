@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
-  devise_for :users
+  # Remove or comment out the devise_for line
+  # devise_for :users
 
   resources :articles, only: [:index, :show] do
     collection do
@@ -7,12 +8,8 @@ Rails.application.routes.draw do
     end
   end
 
-  root to: "pages#home"
+  root to: "articles#index"
 
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
+  # Keep other routes as needed
   get "up" => "rails/health#show", as: :rails_health_check
-
-  # Defines the root path route ("/")
-  # root "posts#index"
 end

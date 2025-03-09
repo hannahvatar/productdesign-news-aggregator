@@ -1,5 +1,5 @@
 class ArticlesController < ApplicationController
-  skip_before_action :authenticate_user!, only: [:index, :show, :scrape]
+  #skip_before_action :authenticate_user!, only: [:index, :show, :scrape]
 
   def index
     @articles = Article.order(published_at: :desc)
