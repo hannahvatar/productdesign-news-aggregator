@@ -1,5 +1,6 @@
+# app/controllers/articles_controller.rb
 class ArticlesController < ApplicationController
-  #skip_before_action :authenticate_user!, only: [:index, :show, :scrape]
+  # Remove any authentication-related code
 
   def index
     @articles = Article.order(published_at: :desc)
