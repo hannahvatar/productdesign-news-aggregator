@@ -2,7 +2,7 @@
 require_relative 'base_scraper'
 
 module Scrapers
-  class UXDesignWeeklyScraper < BaseScraper
+  class UxDesignWeeklyScraper < BaseScraper  # Changed from UXDesignWeeklyScraper to UxDesignWeeklyScraper
     SOURCE_NAME = "UX Design Weekly"
     BASE_URL = "https://uxdesignweekly.com/"
 
