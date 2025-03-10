@@ -15,15 +15,36 @@ module Scrapers
       puts "Starting scrape for: #{SOURCE_NAME}"
       puts "Date range: #{from_date} to #{to_date}"
 
+      all_processed_urls = Set.new
       all_articles = []
-      page = 1
-      continue_scraping = true
-      oldest_date = nil
 
-      # Continue scraping pages until we reach our target date
-      while continue_scraping
+      # Try multiple approaches to find articles
+
+      # Approach 1: Standard paginated archive
+      scrape_archive_pages(all_processed_urls, all_articles)
+
+      # Approach 2: Try navigating by month for January (if needed)
+      if all_articles.empty? || !all_articles.any? { |a| a.published_at.month == 1 && a.published_at.year == 2025 }
+        puts "No January articles found through standard pagination, trying month-specific URL..."
+        scrape_month_archive("2025-01", all_processed_urls, all_articles)
+      end
+
+      # Approach 3: Try navigating directly to article pages from sitemap or other sources
+      # This could be added later if needed
+
+      puts "Saved #{all_articles.count} articles from #{SOURCE_NAME}"
+      all_articles
+    end
+
+    private
+
+    def scrape_archive_pages(all_processed_urls, all_articles)
+      page = 1
+      max_pages = 15
+
+      while page <= max_pages
         url = page == 1 ? BASE_URL : "#{BASE_URL}&page=#{page}"
-        puts "Scraping page #{page}: #{url}"
+        puts "Scraping archive page #{page}: #{url}"
 
         response = HTTParty.get(url)
         puts "Response status: #{response.code}"
@@ -35,106 +56,181 @@ module Scrapers
         end
 
         doc = Nokogiri::HTML(response.body)
-
-        # Based on previous debugging, we know to look for links with '/p/' in the href
-        article_links = doc.css('a').select { |link| link['href'] && link['href'].include?('/p/') }
-
-        # Remove duplicates and comment links
-        unique_urls = Set.new
-        unique_article_links = article_links.select do |link|
-          url = link['href']
-          next false if url.include?("/comments")
-          if unique_urls.include?(url)
-            false
-          else
-            unique_urls.add(url)
-            true
-          end
-        end
-
-        puts "Found #{unique_article_links.size} unique article links on page #{page}"
-
-        # If no articles found on this page, stop pagination
-        if unique_article_links.empty?
-          puts "No articles found on page #{page}, stopping pagination"
-          break
-        end
-
-        # Group links by URL to gather more information about each article
-        articles_data = {}
-
-        unique_article_links.each do |link|
-          url = link['href']
-
-          # Initialize article data if it doesn't exist
-          articles_data[url] ||= {
-            url: url,
-            title: nil,
-            published_at: nil,
-            author: "Rich Holmes", # Default author from previous debugging
-            summary: "",
-            image_url: nil
-          }
-
-          # Try to extract article title from link text
-          link_text = link.text.strip
-          if !link_text.empty? && articles_data[url][:title].nil?
-            articles_data[url][:title] = link_text
-          end
-
-          # Look for date text near the link
-          parent = link.parent
-          3.times do # Look up to 3 levels
-            date_text = parent.text.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:\s+•\s+[\w\s]+)?/)
-            if date_text
-              articles_data[url][:date_str] = date_text[0]
-              break
-            end
-            parent = parent.parent
-            break unless parent
-          end
-        end
-
-        # Process each article data
-        page_articles = []
-        articles_data.each do |url, data|
-          article = process_article_data(data)
-          if article
-            page_articles << article
-
-            # Track the oldest article date to determine when to stop
-            article_date = article.published_at
-            oldest_date = article_date if oldest_date.nil? || article_date < oldest_date
-          end
-        end
+        page_articles = extract_articles_from_page(doc, all_processed_urls)
 
         # Add found articles to our collection
         all_articles.concat(page_articles)
 
-        # Determine whether to continue to the next page
-        if oldest_date && oldest_date < from_date
-          puts "Found articles older than target date #{from_date}, stopping pagination"
+        # Break if we didn't find any new articles on this page
+        if page_articles.empty?
+          puts "No new articles found on page #{page}, stopping pagination"
           break
-        elsif page_articles.empty?
-          puts "No valid articles found on page #{page}, stopping pagination"
-          break
-        else
-          # Go to next page
-          page += 1
+        end
 
-          # Safety check - don't go beyond a reasonable number of pages
-          if page > 10
-            puts "Reached maximum page limit (10), stopping pagination"
+        page += 1
+      end
+    end
+
+    def scrape_month_archive(month_code, all_processed_urls, all_articles)
+      # Try to get the monthly archive page
+      url = "https://departmentofproduct.substack.com/archive/#{month_code}?sort=new"
+      puts "Scraping month page: #{url}"
+
+      response = HTTParty.get(url)
+      puts "Month page response status: #{response.code}"
+
+      if response.code == 200
+        doc = Nokogiri::HTML(response.body)
+        month_articles = extract_articles_from_page(doc, all_processed_urls)
+        all_articles.concat(month_articles)
+        puts "Found #{month_articles.count} additional articles for #{month_code}"
+      else
+        puts "Month page not available, skipping"
+      end
+    end
+
+    def extract_articles_from_page(doc, all_processed_urls)
+      # Look for links with '/p/' in the href (article links)
+      article_links = doc.css('a').select { |link| link['href'] && link['href'].include?('/p/') }
+
+      # Remove duplicates, comments, and already processed URLs
+      unique_article_links = []
+
+      article_links.each do |link|
+        url = link['href']
+        next if url.include?("/comments") # Skip comment links
+        next if all_processed_urls.include?(url) # Skip already processed URLs
+
+        all_processed_urls.add(url) # Mark as processed
+        unique_article_links << link
+      end
+
+      puts "Found #{unique_article_links.size} new article links"
+
+      # Process the articles
+      process_article_links(unique_article_links)
+    end
+
+    def process_article_links(article_links)
+      articles = []
+      articles_data = {}
+
+      # First pass: collect data from links
+      article_links.each do |link|
+        url = link['href']
+
+        # Initialize article data
+        articles_data[url] ||= {
+          url: url,
+          title: nil,
+          published_at: nil,
+          author: "Rich Holmes", # Default author
+          summary: "",
+          image_url: nil
+        }
+
+        # Extract title from link text
+        link_text = link.text.strip
+        if !link_text.empty? && articles_data[url][:title].nil?
+          articles_data[url][:title] = link_text
+        end
+
+        # Look for date text near the link
+        find_date_for_link(link, articles_data[url])
+      end
+
+      # Second pass: visit individual article pages for any with missing data
+      # This is commented out but can be enabled if needed
+      # articles_data.each do |url, data|
+      #   if data[:published_at].nil? || data[:title].nil?
+      #     fetch_article_details(url, data)
+      #   end
+      # end
+
+      # Final pass: process all article data
+      articles_data.each do |url, data|
+        article = process_article_data(data)
+        articles << article if article
+      end
+
+      articles
+    end
+
+    def find_date_for_link(link, article_data)
+      # Try different approaches to find date
+
+      # 1. Look in parent elements
+      parent = link.parent
+      3.times do # Look up to 3 levels
+        break unless parent
+        date_text = parent.text.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:\s+•\s+[\w\s]+)?/)
+        if date_text
+          article_data[:date_str] = date_text[0]
+          break
+        end
+        parent = parent.parent
+      end
+
+      # 2. Look for time elements near the link
+      if article_data[:date_str].nil?
+        link_parent = link.parent
+        4.times do
+          break unless link_parent
+          time_element = link_parent.css('time').first
+          if time_element && time_element['datetime']
+            article_data[:date_str] = time_element['datetime']
             break
           end
+          link_parent = link_parent.parent
         end
       end
 
-      puts "Saved #{all_articles.count} articles from #{SOURCE_NAME}"
-      all_articles
+      # 3. Look anywhere in the surrounding text
+      if article_data[:date_str].nil?
+        surrounding_text = link.parent.text
+        date_match = surrounding_text.match(/(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}/)
+        article_data[:date_str] = date_match[0] if date_match
+      end
     end
 
-    private
+    # Optional: fetch individual article pages if needed
+    def fetch_article_details(url, article_data)
+      begin
+        puts "Fetching details for: #{url}"
+        full_url = url.start_with?('http') ? url : "https://departmentofproduct.substack.com#{url}"
+        response = HTTParty.get(full_url)
+
+        if response.code == 200
+          doc = Nokogiri::HTML(response.body)
+
+          # Extract title if missing
+          if article_data[:title].nil?
+            title_element = doc.css('h1').first
+            article_data[:title] = title_element.text.strip if title_element
+          end
+
+          # Extract date if missing
+          if article_data[:date_str].nil?
+            time_element = doc.css('time').first
+            article_data[:date_str] = time_element['datetime'] if time_element && time_element['datetime']
+
+            # Alternatively look for date text
+            if article_data[:date_str].nil?
+              date_text = doc.text.match(/(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}/)
+              article_data[:date_str] = date_text[0] if date_text
+            end
+          end
+
+          # Extract summary if empty
+          if article_data[:summary].empty?
+            summary_element = doc.css('.subtitle, .post-subtitle').first
+            article_data[:summary] = summary_element.text.strip if summary_element
+          end
+        end
+      rescue => e
+        puts "Error fetching article details: #{e.message}"
+      end
+    end
 
     def process_article_data(data)
       begin
@@ -159,7 +255,7 @@ module Scrapers
           date_only = date_str.split('•').first.strip
 
           begin
-            # Add current year if not present (assuming all articles are from 2025)
+            # Add current year if not present
             date_only = "#{date_only} 2025" unless date_only =~ /\d{4}/
             published_at = parse_date(date_only)
             puts "  Parsed date: #{published_at}"
