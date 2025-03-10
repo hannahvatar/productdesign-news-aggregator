@@ -20,14 +20,64 @@ module Scrapers
 
       articles = []
 
-      # Find all article elements - Substack has a consistent structure
-      # Posts are typically in divs with class "post-preview"
-      article_elements = doc.css('.post-preview')
-      puts "Found #{article_elements.size} article elements"
+      # Based on the debugging output, we need to look for links with '/p/' in the href
+      # These are the article links in the archive
+      article_links = doc.css('a').select { |link| link['href'] && link['href'].include?('/p/') }
 
-      # Process each article
-      article_elements.each do |article_node|
-        article = process_article(article_node)
+      # Remove duplicates (some links appear multiple times)
+      unique_urls = Set.new
+      unique_article_links = article_links.select do |link|
+        url = link['href']
+        if unique_urls.include?(url)
+          false
+        else
+          unique_urls.add(url)
+          true
+        end
+      end
+
+      puts "Found #{unique_article_links.size} unique article links"
+
+      # Group links by URL to gather more information about each article
+      articles_data = {}
+
+      unique_article_links.each do |link|
+        url = link['href']
+        # Skip comment links
+        next if url.include?("/comments")
+
+        # Initialize article data if it doesn't exist
+        articles_data[url] ||= {
+          url: url,
+          title: nil,
+          published_at: nil,
+          author: "Rich Holmes", # Default author from debugging output
+          summary: "",
+          image_url: nil
+        }
+
+        # Try to extract article title from link text
+        link_text = link.text.strip
+        if !link_text.empty? && articles_data[url][:title].nil?
+          articles_data[url][:title] = link_text
+        end
+
+        # Look for date text near the link
+        parent = link.parent
+        3.times do # Look up to 3 levels
+          date_text = parent.text.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:\s+•\s+[\w\s]+)?/)
+          if date_text
+            articles_data[url][:date_str] = date_text[0]
+            break
+          end
+          parent = parent.parent
+          break unless parent
+        end
+      end
+
+      # Process each article data
+      articles_data.each do |url, data|
+        article = process_article_data(data)
         articles << article if article
       end
 
@@ -37,31 +87,32 @@ module Scrapers
 
     private
 
-    def process_article(article_node)
+    def process_article_data(data)
       begin
-        # Extract title - it's usually in an h3 with class "post-preview-title"
-        title_element = article_node.css('.post-preview-title').first
-        return nil unless title_element
-        title = title_element.text.strip
+        url = data[:url]
+        title = data[:title]
 
-        # Extract URL - it's the href attribute of the title's link
-        link_element = title_element.css('a').first || article_node.css('a').first
-        return nil unless link_element
-        url = link_element['href']
+        # Skip if we don't have enough data
+        return nil if url.nil? || title.nil?
+
         # Make sure URL is absolute
         url = "https://departmentofproduct.substack.com#{url}" unless url.start_with?('http')
 
         puts "Processing article: #{title}"
 
-        # Extract date - Substack has dates in elements with class "post-preview-date"
-        date_element = article_node.css('.post-preview-date').first
-        if date_element
-          date_str = date_element.text.strip
+        # Parse date if available
+        published_at = nil
+        if data[:date_str]
+          date_str = data[:date_str]
           puts "  Date string: '#{date_str}'"
 
-          # Try to parse the date
+          # Extract just the date part (remove author)
+          date_only = date_str.split('•').first.strip
+
           begin
-            published_at = parse_date(date_str)
+            # Add current year if not present
+            date_only = "#{date_only} #{Date.today.year}" unless date_only =~ /\d{4}/
+            published_at = parse_date(date_only)
             puts "  Parsed date: #{published_at}"
           rescue => e
             puts "  Error parsing date: #{e.message}"
@@ -80,34 +131,14 @@ module Scrapers
 
         puts "  Date in range: yes"
 
-        # Extract author - Substack typically has authors in elements with class "post-preview-byline"
-        # If not found, use default author
-        author_element = article_node.css('.post-preview-byline').first
-        author = author_element ? author_element.text.strip.gsub(/^By\s+/i, '') : "Department of Product"
-
-        # Extract summary - usually in a div with class "post-preview-description"
-        summary_element = article_node.css('.post-preview-description').first
-        summary = summary_element ? summary_element.text.strip : ""
-
-        # Extract image URL - Substack often has images with class "post-preview-image"
-        image_element = article_node.css('.post-preview-image img').first
-        image_url = nil
-        if image_element
-          image_url = image_element['src']
-        else
-          # Try to find other image in the article
-          image_element = article_node.css('img').first
-          image_url = image_element ? image_element['src'] : nil
-        end
-
         article_attributes = {
           title: title,
           url: url,
           published_at: published_at,
           source: SOURCE_NAME,
-          author: author,
-          summary: summary,
-          image_url: image_url
+          author: data[:author] || "Department of Product",
+          summary: data[:summary] || "",
+          image_url: data[:image_url]
         }
 
         save_article(article_attributes)
