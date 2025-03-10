@@ -1,3 +1,4 @@
+# lib/scrapers/base_scraper.rb
 require 'httparty'
 require 'nokogiri'
 require 'chronic'
@@ -6,7 +7,7 @@ module Scrapers
   class BaseScraper
     attr_reader :from_date, :to_date
 
-    def initialize(from_date = Date.new(2025, 3, 8), to_date = Date.today)
+    def initialize(from_date = Date.new(2025, 1, 1), to_date = Date.today)
       @from_date = from_date
       @to_date = to_date
     end
