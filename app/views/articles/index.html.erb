@@ -4,7 +4,6 @@
   <div class="mb-8 bg-white rounded-lg shadow p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-semibold">Filter & Control</h2>
-
     </div>
 
     <%= form_tag articles_path, method: :get, class: "flex flex-wrap gap-4" do %>
@@ -32,16 +31,51 @@
     <% end %>
   </div>
 
-  <!-- Article count display -->
-  <div class="mb-4 flex justify-between items-center">
-    <div class="bg-gray-100 rounded-lg px-4 py-2">
-      <span class="font-medium">Total articles: </span>
-      <span class="text-blue-600 font-bold"><%= @articles.count %></span>
-      <% if params[:source].present? && params[:source] != "All Sources" %>
-        <span> from <%= params[:source] %></span>
-      <% end %>
+  <!-- Article count and debug information -->
+  <div class="mb-4 bg-gray-100 rounded-lg px-4 py-3">
+    <div class="flex justify-between items-center flex-wrap gap-2">
+      <div>
+        <span class="font-medium">Total articles: </span>
+        <span class="text-blue-600 font-bold"><%= @total_count %></span>
+        <% if params[:source].present? && params[:source] != "All Sources" %>
+          <span> from <%= params[:source] %></span>
+        <% end %>
+      </div>
+
+      <div>
+        <span class="font-medium">Date range: </span>
+        <span class="text-gray-600"><%= @earliest_date&.strftime("%b %d, %Y") %> to <%= @latest_date&.strftime("%b %d, %Y") %></span>
+      </div>
     </div>
   </div>
+
+  <!-- Pagination controls (top) -->
+  <% if @articles.total_pages > 1 %>
+    <div class="my-4 flex justify-center">
+      <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+        <!-- First page -->
+        <%= link_to_unless @articles.first_page?, raw('&laquo; First'), {page: 1},
+            class: "relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Previous page -->
+        <%= link_to_unless @articles.first_page?, raw('&lsaquo; Prev'), {page: @articles.prev_page},
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Page info -->
+        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+          Page <%= @articles.current_page %> of <%= @articles.total_pages %>
+        </span>
+
+        <!-- Next page -->
+        <%= link_to_unless @articles.last_page?, raw('Next &rsaquo;'), {page: @articles.next_page},
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Last page -->
+        <%= link_to_unless @articles.last_page?, raw('Last &raquo;'), {page: @articles.total_pages},
+            class: "relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+      </nav>
+    </div>
+  <% end %>
 
   <div class="bg-white rounded-lg shadow overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
@@ -81,6 +115,34 @@
   <% if @articles.blank? %>
     <div class="mt-8 text-center">
       <p class="text-gray-500">No articles found. Try adjusting your filters or running the scraper.</p>
+    </div>
+  <% end %>
+
+  <!-- Pagination controls (bottom) -->
+  <% if @articles.total_pages > 1 %>
+    <div class="mt-4 flex justify-center">
+      <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+        <!-- First page -->
+        <%= link_to_unless @articles.first_page?, raw('&laquo; First'), {page: 1},
+            class: "relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Previous page -->
+        <%= link_to_unless @articles.first_page?, raw('&lsaquo; Prev'), {page: @articles.prev_page},
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Page info -->
+        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+          Page <%= @articles.current_page %> of <%= @articles.total_pages %>
+        </span>
+
+        <!-- Next page -->
+        <%= link_to_unless @articles.last_page?, raw('Next &rsaquo;'), {page: @articles.next_page},
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Last page -->
+        <%= link_to_unless @articles.last_page?, raw('Last &raquo;'), {page: @articles.total_pages},
+            class: "relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+      </nav>
     </div>
   <% end %>
 </div>
