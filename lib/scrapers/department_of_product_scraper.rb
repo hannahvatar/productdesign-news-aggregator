@@ -14,75 +14,124 @@ module Scrapers
     def scrape
       puts "Starting scrape for: #{SOURCE_NAME}"
       puts "Date range: #{from_date} to #{to_date}"
-      response = HTTParty.get(BASE_URL)
-      puts "Response status: #{response.code}"
-      doc = Nokogiri::HTML(response.body)
 
-      articles = []
+      all_articles = []
+      page = 1
+      continue_scraping = true
+      oldest_date = nil
 
-      # Based on the debugging output, we need to look for links with '/p/' in the href
-      # These are the article links in the archive
-      article_links = doc.css('a').select { |link| link['href'] && link['href'].include?('/p/') }
+      # Continue scraping pages until we reach our target date
+      while continue_scraping
+        url = page == 1 ? BASE_URL : "#{BASE_URL}&page=#{page}"
+        puts "Scraping page #{page}: #{url}"
 
-      # Remove duplicates (some links appear multiple times)
-      unique_urls = Set.new
-      unique_article_links = article_links.select do |link|
-        url = link['href']
-        if unique_urls.include?(url)
-          false
+        response = HTTParty.get(url)
+        puts "Response status: #{response.code}"
+
+        # Stop if page doesn't exist
+        if response.code != 200
+          puts "Page #{page} returned status #{response.code}, stopping pagination"
+          break
+        end
+
+        doc = Nokogiri::HTML(response.body)
+
+        # Based on previous debugging, we know to look for links with '/p/' in the href
+        article_links = doc.css('a').select { |link| link['href'] && link['href'].include?('/p/') }
+
+        # Remove duplicates and comment links
+        unique_urls = Set.new
+        unique_article_links = article_links.select do |link|
+          url = link['href']
+          next false if url.include?("/comments")
+          if unique_urls.include?(url)
+            false
+          else
+            unique_urls.add(url)
+            true
+          end
+        end
+
+        puts "Found #{unique_article_links.size} unique article links on page #{page}"
+
+        # If no articles found on this page, stop pagination
+        if unique_article_links.empty?
+          puts "No articles found on page #{page}, stopping pagination"
+          break
+        end
+
+        # Group links by URL to gather more information about each article
+        articles_data = {}
+
+        unique_article_links.each do |link|
+          url = link['href']
+
+          # Initialize article data if it doesn't exist
+          articles_data[url] ||= {
+            url: url,
+            title: nil,
+            published_at: nil,
+            author: "Rich Holmes", # Default author from previous debugging
+            summary: "",
+            image_url: nil
+          }
+
+          # Try to extract article title from link text
+          link_text = link.text.strip
+          if !link_text.empty? && articles_data[url][:title].nil?
+            articles_data[url][:title] = link_text
+          end
+
+          # Look for date text near the link
+          parent = link.parent
+          3.times do # Look up to 3 levels
+            date_text = parent.text.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:\s+•\s+[\w\s]+)?/)
+            if date_text
+              articles_data[url][:date_str] = date_text[0]
+              break
+            end
+            parent = parent.parent
+            break unless parent
+          end
+        end
+
+        # Process each article data
+        page_articles = []
+        articles_data.each do |url, data|
+          article = process_article_data(data)
+          if article
+            page_articles << article
+
+            # Track the oldest article date to determine when to stop
+            article_date = article.published_at
+            oldest_date = article_date if oldest_date.nil? || article_date < oldest_date
+          end
+        end
+
+        # Add found articles to our collection
+        all_articles.concat(page_articles)
+
+        # Determine whether to continue to the next page
+        if oldest_date && oldest_date < from_date
+          puts "Found articles older than target date #{from_date}, stopping pagination"
+          break
+        elsif page_articles.empty?
+          puts "No valid articles found on page #{page}, stopping pagination"
+          break
         else
-          unique_urls.add(url)
-          true
-        end
-      end
+          # Go to next page
+          page += 1
 
-      puts "Found #{unique_article_links.size} unique article links"
-
-      # Group links by URL to gather more information about each article
-      articles_data = {}
-
-      unique_article_links.each do |link|
-        url = link['href']
-        # Skip comment links
-        next if url.include?("/comments")
-
-        # Initialize article data if it doesn't exist
-        articles_data[url] ||= {
-          url: url,
-          title: nil,
-          published_at: nil,
-          author: "Rich Holmes", # Default author from debugging output
-          summary: "",
-          image_url: nil
-        }
-
-        # Try to extract article title from link text
-        link_text = link.text.strip
-        if !link_text.empty? && articles_data[url][:title].nil?
-          articles_data[url][:title] = link_text
-        end
-
-        # Look for date text near the link
-        parent = link.parent
-        3.times do # Look up to 3 levels
-          date_text = parent.text.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:\s+•\s+[\w\s]+)?/)
-          if date_text
-            articles_data[url][:date_str] = date_text[0]
+          # Safety check - don't go beyond a reasonable number of pages
+          if page > 10
+            puts "Reached maximum page limit (10), stopping pagination"
             break
           end
-          parent = parent.parent
-          break unless parent
         end
       end
 
-      # Process each article data
-      articles_data.each do |url, data|
-        article = process_article_data(data)
-        articles << article if article
-      end
-
-      puts "Saved #{articles.count} articles from #{SOURCE_NAME}"
-      articles
+      puts "Saved #{all_articles.count} articles from #{SOURCE_NAME}"
+      all_articles
     end
 
     private
@@ -110,8 +159,8 @@ module Scrapers
           date_only = date_str.split('•').first.strip
 
           begin
-            # Add current year if not present
-            date_only = "#{date_only} #{Date.today.year}" unless date_only =~ /\d{4}/
+            # Add current year if not present (assuming all articles are from 2025)
+            date_only = "#{date_only} 2025" unless date_only =~ /\d{4}/
             published_at = parse_date(date_only)
             puts "  Parsed date: #{published_at}"
           rescue => e
