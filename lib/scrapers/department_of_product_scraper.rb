@@ -21,13 +21,12 @@ module Scrapers
       articles = []
 
       # Based on previous debugging, we need to look for links with '/p/' in the href
-      article_links = doc.css('a').select { |link| link['href'] && link['href'].include?('/p/') }
+      article_links = doc.css('a').select { |link| link['href'] && link['href'].include?('/p/') && !link['href'].include?('/comments') }
 
-      # Remove duplicates and comment links
+      # Remove duplicates
       unique_urls = Set.new
       unique_article_links = article_links.select do |link|
         url = link['href']
-        next false if url.include?("/comments")
         if unique_urls.include?(url)
           false
         else
@@ -44,6 +43,9 @@ module Scrapers
       unique_article_links.each do |link|
         url = link['href']
 
+        # Skip if this URL is already in progress
+        next if articles_data[url] && articles_data[url][:title]
+
         # Initialize article data if it doesn't exist
         articles_data[url] ||= {
           url: url,
@@ -56,7 +58,7 @@ module Scrapers
 
         # Try to extract article title from link text
         link_text = link.text.strip
-        if !link_text.empty? && articles_data[url][:title].nil?
+        if !link_text.empty? && link_text != SOURCE_NAME
           articles_data[url][:title] = link_text
         end
 
@@ -73,6 +75,13 @@ module Scrapers
         end
       end
 
+      # For articles where we couldn't find a good title, try visiting the article page
+      articles_data.each do |url, data|
+        if data[:title].nil? || data[:title] == SOURCE_NAME
+          fetch_article_title(url, data)
+        end
+      end
+
       # Process each article data
       articles_data.each do |url, data|
         article = process_article_data(data)
@@ -85,13 +94,56 @@ module Scrapers
 
     private
 
+    def fetch_article_title(url, data)
+      begin
+        puts "Fetching title for article: #{url}"
+        full_url = url.start_with?('http') ? url : "https://departmentofproduct.substack.com#{url}"
+
+        response = HTTParty.get(full_url)
+
+        if response.code == 200
+          doc = Nokogiri::HTML(response.body)
+
+          # Try to find the title in the h1 element
+          title_element = doc.css('h1').first
+          if title_element
+            title = title_element.text.strip
+            if title && !title.empty? && title != SOURCE_NAME
+              data[:title] = title
+              puts "  Found title: #{title}"
+            end
+          end
+
+          # If we have a date string but couldn't parse it, try again with the page content
+          if data[:date_str].nil?
+            # Look for time elements
+            time_element = doc.css('time').first
+            if time_element && time_element['datetime']
+              data[:date_str] = time_element['datetime']
+            else
+              # Look for date patterns in the text
+              date_pattern = doc.text.match(/(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:\s+•\s+[\w\s]+)?/)
+              data[:date_str] = date_pattern[0] if date_pattern
+            end
+          end
+
+          # Try to extract a summary
+          if data[:summary].empty?
+            summary_element = doc.css('.subtitle, .post-subtitle').first
+            data[:summary] = summary_element.text.strip if summary_element
+          end
+        else
+          puts "  Failed to fetch article page: #{response.code}"
+        end
+      rescue => e
+        puts "  Error fetching article title: #{e.message}"
+      end
+    end
+
     def process_article_data(data)
       begin
         url = data[:url]
-        title = data[:title]
-
-        # Skip if we don't have enough data
-        return nil if url.nil? || title.nil?
+        title = data[:title] || "Unknown Title"
 
         # Make sure URL is absolute
         url = "https://departmentofproduct.substack.com#{url}" unless url.start_with?('http')
@@ -134,7 +186,7 @@ module Scrapers
           url: url,
           published_at: published_at,
           source: SOURCE_NAME,
-          author: data[:author] || "Department of Product",
+          author: data[:author] || "Rich Holmes",
           summary: data[:summary] || "",
           image_url: data[:image_url]
         }
