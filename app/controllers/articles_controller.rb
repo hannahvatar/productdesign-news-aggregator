@@ -8,14 +8,16 @@ class ArticlesController < ApplicationController
     # Apply source filter if provided
     if params[:source].present? && params[:source] != "All Sources"
       @articles = @articles.where(source: params[:source])
+
+      # Special case for UX Planet - completely skip date filtering
+      if params[:source] == "UX Planet"
+        # We're done filtering for UX Planet - skip all date filters
+        @skip_date_filter = true
+      end
     end
 
-    # Special handling for UX Planet to show all articles regardless of date
-    # Only skip date filtering for UX Planet specifically
-    skip_date_filter = params[:source] == "UX Planet"
-
-    # Apply date filtering for other sources or when no source filter is applied
-    unless skip_date_filter
+    # Apply date filtering (unless we're skipping it for UX Planet)
+    unless @skip_date_filter
       if params[:start_date].present? && params[:end_date].present?
         begin
           start_date = Date.parse(params[:start_date])
@@ -31,6 +33,9 @@ class ArticlesController < ApplicationController
         @default_date_filter = true
         @start_date = Date.new(2025, 1, 1)  # Go back to January 1, 2025
         @end_date = Date.today
+
+        # Apply the default date filter to the query
+        @articles = @articles.where(published_at: @start_date..@end_date)
       else
         @default_date_filter = false
         @start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : nil
@@ -44,8 +49,6 @@ class ArticlesController < ApplicationController
     @latest_date = @articles.maximum(:published_at)
 
     # Add pagination (20 articles per page)
-    # Make sure you have the kaminari gem installed: gem 'kaminari'
-    # If using will_paginate, change this to: @articles = @articles.paginate(page: params[:page], per_page: 20)
     @articles = @articles.page(params[:page]).per(20)
 
     @sources = Article.distinct.pluck(:source).sort
