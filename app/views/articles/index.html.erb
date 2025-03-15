@@ -46,19 +46,6 @@
           <%= label_tag :end_date, "To:", class: "block mb-1" %>
           <%= date_field_tag :end_date, params[:end_date] || Date.today, class: "p-2 border rounded" %>
         </div>
-
-        <!-- TLDR-specific filter -->
-        <div>
-          <%= label_tag :tldr_max_articles, "Max TLDR articles per day:", class: "block mb-1" %>
-          <%= select_tag :tldr_max_articles,
-                        options_for_select([
-                          ["5 articles", 5],
-                          ["10 articles", 10],
-                          ["15 articles", 15],
-                          ["No limit", 0]
-                        ], params[:tldr_max_articles] || 10),
-                        class: "p-2 border rounded" %>
-        </div>
       </div>
 
       <div class="w-full mt-4">
@@ -92,12 +79,12 @@
       <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
         <!-- First page -->
         <%= link_to_unless @articles.first_page?, raw('&laquo; First'),
-            url_for(params.permit!.merge(page: 1)),
+            url_for(request.query_parameters.merge(page: 1)),
             class: "relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
 
         <!-- Previous page -->
         <%= link_to_unless @articles.first_page?, raw('&lsaquo; Prev'),
-            url_for(params.permit!.merge(page: @articles.prev_page)),
+            url_for(request.query_parameters.merge(page: @articles.prev_page)),
             class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
 
         <!-- Page info -->
@@ -107,12 +94,12 @@
 
         <!-- Next page -->
         <%= link_to_unless @articles.last_page?, raw('Next &rsaquo;'),
-            url_for(params.permit!.merge(page: @articles.next_page)),
+            url_for(request.query_parameters.merge(page: @articles.next_page)),
             class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
 
         <!-- Last page -->
         <%= link_to_unless @articles.last_page?, raw('Last &raquo;'),
-            url_for(params.permit!.merge(page: @articles.total_pages)),
+            url_for(request.query_parameters.merge(page: @articles.total_pages)),
             class: "relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
       </nav>
     </div>
@@ -167,12 +154,12 @@
       <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
         <!-- First page -->
         <%= link_to_unless @articles.first_page?, raw('&laquo; First'),
-            url_for(params.permit!.merge(page: 1)),
+            url_for(request.query_parameters.merge(page: 1)),
             class: "relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
 
         <!-- Previous page -->
         <%= link_to_unless @articles.first_page?, raw('&lsaquo; Prev'),
-            url_for(params.permit!.merge(page: @articles.prev_page)),
+            url_for(request.query_parameters.merge(page: @articles.prev_page)),
             class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
 
         <!-- Page info -->
@@ -182,12 +169,12 @@
 
         <!-- Next page -->
         <%= link_to_unless @articles.last_page?, raw('Next &rsaquo;'),
-            url_for(params.permit!.merge(page: @articles.next_page)),
+            url_for(request.query_parameters.merge(page: @articles.next_page)),
             class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
 
         <!-- Last page -->
         <%= link_to_unless @articles.last_page?, raw('Last &raquo;'),
-            url_for(params.permit!.merge(page: @articles.total_pages)),
+            url_for(request.query_parameters.merge(page: @articles.total_pages)),
             class: "relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
       </nav>
     </div>
