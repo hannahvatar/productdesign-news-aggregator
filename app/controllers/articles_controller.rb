@@ -3,6 +3,9 @@ class ArticlesController < ApplicationController
   # Remove any authentication-related code
 
   def index
+    # Log initial sources
+    Rails.logger.debug "DEBUG: All sources in database: #{Article.distinct.pluck(:source)}"
+
     # Define excluded sources at the top for easy maintenance
     excluded_sources = ['UX Design Weekly', 'UX Movement']
 
@@ -54,6 +57,10 @@ class ArticlesController < ApplicationController
     @sources = Article.distinct.pluck(:source)
                       .reject { |source| excluded_sources.include?(source) }
                       .sort
+
+    # Log final sources and article count
+    Rails.logger.debug "DEBUG: Sources after filtering: #{@sources}"
+    Rails.logger.debug "DEBUG: Total articles: #{@total_count}"
   end
 
   def show
