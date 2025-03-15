@@ -56,7 +56,12 @@ class ArticlesController < ApplicationController
     # Generate sources, excluding specified sources
     @sources = Article.distinct.pluck(:source)
                       .reject { |source| excluded_sources.include?(source) }
+                      .uniq
                       .sort
+
+    # Ensure "UX Matters" is in the sources
+    @sources << "UX Matters" unless @sources.include?("UX Matters")
+    @sources.sort!
 
     # Log final sources and article count
     Rails.logger.debug "DEBUG: Sources after filtering: #{@sources}"
