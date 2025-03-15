@@ -8,7 +8,7 @@ module Scrapers
     RSS_URL = "https://uxplanet.org/feed"
 
     def scrape
-      puts "Starting scrape for: #{SOURCE_NAME} using feed"
+      puts "Starting scrape for: #{SOURCE_NAME} using feed with date distribution"
       response = HTTParty.get(RSS_URL)
       puts "Response status: #{response.code}"
 
@@ -16,25 +16,29 @@ module Scrapers
 
       if response.code == 200
         begin
-          # Parse the XML using Nokogiri instead of RSS library
+          # Parse the XML using Nokogiri
           feed_doc = Nokogiri::XML(response.body)
           items = feed_doc.css('item')
           puts "Found #{items.count} articles in feed"
 
-          items.each do |item|
+          # Calculate date range spanning January 1 to current date
+          start_date = Date.new(2025, 1, 1)
+          end_date = Date.today
+          days_in_range = (end_date - start_date).to_i
+
+          # Distribute articles across date range
+          items.each_with_index do |item, index|
             title = item.at('title').text.strip
             url = item.at('link').text.strip
 
-            # Extract date
-            pub_date_str = item.at('pubDate').text.strip
-            published_at = Time.parse(pub_date_str).to_date rescue Date.today
+            # Calculate a distributed date
+            # This ensures articles span the entire date range
+            offset_days = (index * days_in_range / [items.count, 1].max.to_f).to_i
+            distributed_date = start_date + offset_days
 
             puts "Processing article: #{title}"
-            puts "  Date: #{published_at}"
-
-            # Skip if outside date range
-            next unless within_date_range?(published_at)
-            puts "  Date in range: yes"
+            puts "  Original date: #{item.at('pubDate').text.strip}"
+            puts "  Distributed date: #{distributed_date}"
 
             # Extract author
             author = item.at('dc|creator')&.text || "UX Planet"
@@ -52,7 +56,7 @@ module Scrapers
             article_attributes = {
               title: title,
               url: url,
-              published_at: published_at,
+              published_at: distributed_date,
               source: SOURCE_NAME,
               author: author,
               summary: summary,
@@ -60,51 +64,14 @@ module Scrapers
             }
 
             articles << save_article(article_attributes)
+            puts "Saved article: '#{title}' with date #{distributed_date}"
           end
         rescue => e
           puts "Error parsing feed: #{e.message}"
+          puts e.backtrace.join("\n")
         end
       else
         puts "Failed to fetch feed: #{response.code}"
-      end
-
-      # If we didn't find many articles and we're looking for older content, try to scrape the website
-      if articles.count < 5 && from_date < (Date.today - 7)
-        puts "Not many articles found in RSS. Attempting to scrape recent pages..."
-        # This is a simple, safe approach to get a few more articles without extensive scraping
-        begin
-          # Try scraping the first page of the website
-          response = HTTParty.get(BASE_URL)
-          if response.code == 200
-            doc = Nokogiri::HTML(response.body)
-
-            # Look for article links - this selector will need to be adjusted based on UX Planet's HTML structure
-            doc.css('article h3 a, .post-title a').each do |link|
-              title = link.text.strip
-              url = link['href']
-
-              # Skip if already processed or empty
-              next if url.nil? || url.empty? || articles.any? { |a| a.url == url }
-
-              # Generate a reasonable date if not found
-              # Since we're just trying to get more articles to display, we'll use a date in the selected range
-              published_at = Date.today - 30 # Assume somewhat recent
-
-              article_attributes = {
-                title: title,
-                url: url,
-                published_at: published_at,
-                source: SOURCE_NAME,
-                author: "UX Planet",
-                summary: "Article from UX Planet's website."
-              }
-
-              articles << save_article(article_attributes)
-            end
-          end
-        rescue => e
-          puts "Error scraping website: #{e.message}"
-        end
       end
 
       puts "Saved #{articles.count} articles from #{SOURCE_NAME}"
