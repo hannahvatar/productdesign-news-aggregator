@@ -1,14 +1,4 @@
-<!-- Debug Information Section -->
-<div style="background-color: yellow; padding: 10px;">
-  <h3>Debug Information</h3>
-  <p>SQL Query: <%= @articles.to_sql %></p>
-  <p>Full Params: <%= params.inspect %></p>
-  <p>Selected Source: <%= params[:source].inspect %></p>
-  <p>Total Articles: <%= @articles.count %></p>
-  <p>Sources: <%= @sources.inspect %></p>
-  <p>Date Range: <%= @start_date %> to <%= @end_date %></p>
-  <p>First Article Source: <%= @articles.first&.source %></p>
-</div>
+
 
 <div class="container mx-auto px-4 py-8">
   <h1 class="text-3xl font-bold mb-6">Test Product Design News Aggregator</h1>
