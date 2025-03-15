@@ -1,5 +1,4 @@
-<!-- Add this near the top of your view -->
-<!-- Add this near the top of your view -->
+<!-- Debug Information Section -->
 <div style="background-color: yellow; padding: 10px;">
   <h3>Debug Information</h3>
   <p>Full Params: <%= params.inspect %></p>
@@ -13,6 +12,7 @@
 <div class="container mx-auto px-4 py-8">
   <h1 class="text-3xl font-bold mb-6">Test Product Design News Aggregator</h1>
 
+  <!-- Filter & Control Section -->
   <div class="mb-8 bg-white rounded-lg shadow p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-semibold">Filter & Control</h2>
@@ -93,6 +93,7 @@
     </div>
   <% end %>
 
+  <!-- Articles Table -->
   <div class="bg-white rounded-lg shadow overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
@@ -128,6 +129,7 @@
     </table>
   </div>
 
+  <!-- No Articles Found Message -->
   <% if @articles.blank? %>
     <div class="mt-8 text-center">
       <p class="text-gray-500">No articles found. Try adjusting your filters or running the scraper.</p>
