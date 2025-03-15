@@ -5,29 +5,37 @@ class ArticlesController < ApplicationController
   def index
     @articles = Article.order(published_at: :desc)
 
+    # Apply source filter if provided
     if params[:source].present? && params[:source] != "All Sources"
       @articles = @articles.where(source: params[:source])
     end
 
-    if params[:start_date].present? && params[:end_date].present?
-      begin
-        start_date = Date.parse(params[:start_date])
-        end_date = Date.parse(params[:end_date])
-        @articles = @articles.where(published_at: start_date..end_date)
-      rescue ArgumentError => e
-        flash.now[:alert] = "Invalid date format. Using default date range."
-      end
-    end
+    # Special handling for UX Planet to show all articles regardless of date
+    # Only skip date filtering for UX Planet specifically
+    skip_date_filter = params[:source] == "UX Planet"
 
-    # Add default date range if none specified (last 30 days)
-    if !params[:start_date].present? && !params[:end_date].present?
-      @default_date_filter = true
-      @start_date = Date.new(2025, 1, 1)  # Go back to January 1, 2025
-      @end_date = Date.today
-    else
-      @default_date_filter = false
-      @start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : nil
-      @end_date = params[:end_date].present? ? Date.parse(params[:end_date]) : nil
+    # Apply date filtering for other sources or when no source filter is applied
+    unless skip_date_filter
+      if params[:start_date].present? && params[:end_date].present?
+        begin
+          start_date = Date.parse(params[:start_date])
+          end_date = Date.parse(params[:end_date])
+          @articles = @articles.where(published_at: start_date..end_date)
+        rescue ArgumentError => e
+          flash.now[:alert] = "Invalid date format. Using default date range."
+        end
+      end
+
+      # Add default date range if none specified (last 30 days)
+      if !params[:start_date].present? && !params[:end_date].present?
+        @default_date_filter = true
+        @start_date = Date.new(2025, 1, 1)  # Go back to January 1, 2025
+        @end_date = Date.today
+      else
+        @default_date_filter = false
+        @start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : nil
+        @end_date = params[:end_date].present? ? Date.parse(params[:end_date]) : nil
+      end
     end
 
     # Add some debugging information
