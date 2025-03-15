@@ -3,7 +3,13 @@ class ArticlesController < ApplicationController
   # Remove any authentication-related code
 
   def index
-    @articles = Article.order(published_at: :desc)
+
+    excluded_sources = ['UX Design Weekly', 'UX Movement']
+
+    @articles = Article.where.not(source: excluded_sources)
+               .or(Article.where.not("source LIKE '%UX Design Weekly%'"))
+               .or(Article.where.not("source LIKE '%UX Movement%'"))
+               .order(published_at: :desc)
 
     # Apply source filter if provided
     if params[:source].present? && params[:source] != "All Sources"
