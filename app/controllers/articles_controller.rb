@@ -16,8 +16,17 @@ class ArticlesController < ApplicationController
 
     # Apply source filter if provided
     if params[:source].present? && params[:source] != "All Sources"
-      # Use case-insensitive matching to handle potential variations
-      @articles = @articles.where("source ILIKE ?", params[:source])
+      # More robust source matching
+      @articles = @articles.where(
+        "source ILIKE ? OR
+         source LIKE ? OR
+         TRIM(source) = ? OR
+         LOWER(TRIM(source)) = LOWER(?)",
+        params[:source],
+        "%#{params[:source]}%",
+        params[:source].strip,
+        params[:source].strip
+      )
     end
 
     # Special handling for UX Planet to show all articles regardless of date
