@@ -8,7 +8,7 @@ class NewsScraperService
       Scrapers::NnGroupScraper,
       Scrapers::FigmaBlogScraper,
       Scrapers::UxPlanetScraper,
-      Scrapers::UxMattersRssScraper,
+      Scrapers::UxMattersScraper,
       Scrapers::UxCollectiveScraper,
       Scrapers::DepartmentOfProductScraper
     ]
@@ -45,7 +45,7 @@ class NewsScraperService
       Scrapers::NnGroupScraper,
       Scrapers::FigmaBlogScraper,
       Scrapers::UxPlanetScraper,
-      Scrapers::UxMattersRssScraper,
+      Scrapers::UxMattersScraper,
       Scrapers::UxCollectiveScraper,
       Scrapers::DepartmentOfProductScraper
     ]
