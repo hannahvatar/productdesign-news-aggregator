@@ -1,3 +1,5 @@
+<!-- Add this near the top of your view -->
+<!-- Add this near the top of your view -->
 <div style="background-color: yellow; padding: 10px;">
   <h3>Debug Information</h3>
   <p>Full Params: <%= params.inspect %></p>
@@ -6,16 +8,6 @@
   <p>Sources: <%= @sources.inspect %></p>
   <p>Date Range: <%= @start_date %> to <%= @end_date %></p>
   <p>First Article Source: <%= @articles.first&.source %></p>
-
-  <h4>Dropdown Options:</h4>
-  <ul>
-    <% (['All Sources'] + @sources.sort.uniq.compact).each do |source| %>
-      <li>
-        <%= source %>
-        <%= source == params[:source] ? '(selected)' : '' %>
-      </li>
-    <% end %>
-  </ul>
 </div>
 
 <div class="container mx-auto px-4 py-8">
@@ -51,5 +43,126 @@
     <% end %>
   </div>
 
-  <!-- Rest of the view remains the same -->
+  <!-- Article count and debug information -->
+  <div class="mb-4 bg-gray-100 rounded-lg px-4 py-3">
+    <div class="flex justify-between items-center flex-wrap gap-2">
+      <div>
+        <span class="font-medium">Total articles: </span>
+        <span class="text-blue-600 font-bold"><%= @total_count %></span>
+        <% if params[:source].present? && params[:source] != "All Sources" %>
+          <span> from <%= params[:source] %></span>
+        <% end %>
+      </div>
+
+      <div>
+        <span class="font-medium">Date range: </span>
+        <span class="text-gray-600"><%= @earliest_date&.strftime("%b %d, %Y") %> to <%= @latest_date&.strftime("%b %d, %Y") %></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination controls (top) -->
+  <% if @articles.total_pages > 1 %>
+    <div class="my-4 flex justify-center">
+      <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+        <!-- First page -->
+        <%= link_to_unless @articles.first_page?, raw('&laquo; First'),
+            params.permit(:source, :start_date, :end_date).merge(page: 1),
+            class: "relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Previous page -->
+        <%= link_to_unless @articles.first_page?, raw('&lsaquo; Prev'),
+            params.permit(:source, :start_date, :end_date).merge(page: @articles.prev_page),
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Page info -->
+        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+          Page <%= @articles.current_page %> of <%= @articles.total_pages %>
+        </span>
+
+        <!-- Next page -->
+        <%= link_to_unless @articles.last_page?, raw('Next &rsaquo;'),
+            params.permit(:source, :start_date, :end_date).merge(page: @articles.next_page),
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Last page -->
+        <%= link_to_unless @articles.last_page?, raw('Last &raquo;'),
+            params.permit(:source, :start_date, :end_date).merge(page: @articles.total_pages),
+            class: "relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+      </nav>
+    </div>
+  <% end %>
+
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Title
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Source
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Published Date
+          </th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @articles.each do |article| %>
+          <tr>
+            <td class="px-6 py-4">
+              <a href="<%= article.url %>" target="_blank" class="text-blue-600 hover:underline font-medium">
+                <%= article.title %>
+              </a>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <%= article.source %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <%= article.published_at.strftime("%B %d, %Y") %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @articles.blank? %>
+    <div class="mt-8 text-center">
+      <p class="text-gray-500">No articles found. Try adjusting your filters or running the scraper.</p>
+    </div>
+  <% end %>
+
+  <!-- Pagination controls (bottom) -->
+  <% if @articles.total_pages > 1 %>
+    <div class="mt-4 flex justify-center">
+      <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+        <!-- First page -->
+        <%= link_to_unless @articles.first_page?, raw('&laquo; First'),
+            params.permit(:source, :start_date, :end_date).merge(page: 1),
+            class: "relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Previous page -->
+        <%= link_to_unless @articles.first_page?, raw('&lsaquo; Prev'),
+            params.permit(:source, :start_date, :end_date).merge(page: @articles.prev_page),
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.first_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Page info -->
+        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+          Page <%= @articles.current_page %> of <%= @articles.total_pages %>
+        </span>
+
+        <!-- Next page -->
+        <%= link_to_unless @articles.last_page?, raw('Next &rsaquo;'),
+            params.permit(:source, :start_date, :end_date).merge(page: @articles.next_page),
+            class: "relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+
+        <!-- Last page -->
+        <%= link_to_unless @articles.last_page?, raw('Last &raquo;'),
+            params.permit(:source, :start_date, :end_date).merge(page: @articles.total_pages),
+            class: "relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium #{@articles.last_page? ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}" %>
+      </nav>
+    </div>
+  <% end %>
 </div>
