@@ -8,9 +8,9 @@ class NewsScraperService
       Scrapers::NnGroupScraper,
       Scrapers::FigmaBlogScraper,
       Scrapers::UxPlanetScraper,
-      Scrapers::UxMattersScraper,
-      Scrapers::DepartmentOfProductScraper,
-      Scrapers::UxCollectiveScraper
+      Scrapers::UxMattersRssScraper,
+      Scrapers::UxCollectiveScraper,
+      Scrapers::DepartmentOfProductScraper
     ]
 
     results = {}
@@ -47,9 +47,9 @@ class NewsScraperService
       Scrapers::NnGroupScraper,
       Scrapers::FigmaBlogScraper,
       Scrapers::UxPlanetScraper,
-      Scrapers::UxMattersScraper,
-      Scrapers::DepartmentOfProductScraper,
-      Scrapers::UxCollectiveScraper
+      Scrapers::UxMattersRssScraper,
+      Scrapers::UxCollectiveScraper,
+      Scrapers::DepartmentOfProductScraper
     ]
 
     scraper_classes.find { |klass| klass.const_get(:SOURCE_NAME) == source_name }
