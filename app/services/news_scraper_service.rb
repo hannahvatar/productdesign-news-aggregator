@@ -8,7 +8,9 @@ class NewsScraperService
       Scrapers::NnGroupScraper,
       Scrapers::FigmaBlogScraper,
       Scrapers::UxPlanetScraper,
-      # Add other scrapers, excluding UX Movement and UX Design Weekly
+      Scrapers::UxMattersScraper,
+      Scrapers::DepartmentOfProductScraper,
+      Scrapers::UxCollectiveScraper
     ]
 
     results = {}
@@ -45,7 +47,9 @@ class NewsScraperService
       Scrapers::NnGroupScraper,
       Scrapers::FigmaBlogScraper,
       Scrapers::UxPlanetScraper,
-      # Add other scraper classes
+      Scrapers::UxMattersScraper,
+      Scrapers::DepartmentOfProductScraper,
+      Scrapers::UxCollectiveScraper
     ]
 
     scraper_classes.find { |klass| klass.const_get(:SOURCE_NAME) == source_name }
