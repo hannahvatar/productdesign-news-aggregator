@@ -1,75 +1,103 @@
-# lib/scrapers/ux_planet_scraper.rb
-require_relative 'base_scraper'
+def scrape
+  puts "Starting scrape for: #{SOURCE_NAME}"
+  articles = []
 
-module Scrapers
-  class UxPlanetScraper < BaseScraper
-    SOURCE_NAME = "UX Planet"
-    BASE_URL = "https://uxplanet.org/"
-    RSS_URL = "https://uxplanet.org/feed"
+  # First try the RSS feed for most recent articles
+  feed_articles = scrape_rss
+  articles.concat(feed_articles)
 
-    def scrape
-      puts "Starting scrape for: #{SOURCE_NAME} using feed"
-      response = HTTParty.get(RSS_URL)
-      puts "Response status: #{response.code}"
+  # If we need older articles (based on date range), scrape the website
+  if from_date < (Date.today - 7)
+    puts "Scraping website for older articles..."
+    website_articles = scrape_website
+    articles.concat(website_articles)
+  end
 
-      articles = []
+  puts "Saved #{articles.count} articles from #{SOURCE_NAME}"
+  articles
+end
 
-      if response.code == 200
-        begin
-          # Parse the XML using Nokogiri instead of RSS library
-          feed_doc = Nokogiri::XML(response.body)
-          items = feed_doc.css('item')
-          puts "Found #{items.count} articles in feed"
+def scrape_rss
+  # Your existing RSS scraping code
+end
 
-          items.each do |item|
-            title = item.at('title').text.strip
-            url = item.at('link').text.strip
+def scrape_website
+  articles = []
+  # Start from the first page
+  page = 1
+  continue_scraping = true
 
-            # Extract date
-            pub_date_str = item.at('pubDate').text.strip
-            published_at = Time.parse(pub_date_str).to_date rescue Date.today
+  while continue_scraping && page <= 10 # Limit to first 10 pages to avoid excessive requests
+    url = "https://uxplanet.org/latest?page=#{page}"
+    puts "Scraping page #{page}: #{url}"
 
-            puts "Processing article: #{title}"
-            puts "  Date: #{published_at}"
+    response = HTTParty.get(url)
+    if response.code == 200
+      doc = Nokogiri::HTML(response.body)
 
-            # Skip if outside date range
-            next unless within_date_range?(published_at)
-            puts "  Date in range: yes"
+      # Find article elements on the page
+      article_elements = doc.css('article')
 
-            # Extract author
-            author = item.at('dc|creator')&.text || "UX Planet"
-
-            # Extract summary/description
-            description_html = item.at('description')&.text || ""
-            description_doc = Nokogiri::HTML(description_html)
-            summary = description_doc.text.strip[0..200] + "..."
-
-            # Try to extract an image from the description
-            image_url = nil
-            first_img = description_doc.at('img')
-            image_url = first_img['src'] if first_img
-
-            article_attributes = {
-              title: title,
-              url: url,
-              published_at: published_at,
-              source: SOURCE_NAME,
-              author: author,
-              summary: summary,
-              image_url: image_url
-            }
-
-            articles << save_article(article_attributes)
-          end
-        rescue => e
-          puts "Error parsing feed: #{e.message}"
-        end
-      else
-        puts "Failed to fetch feed: #{response.code}"
+      # If no articles found or all articles are older than our from_date, stop scraping
+      if article_elements.empty?
+        puts "No more articles found"
+        break
       end
 
-      puts "Saved #{articles.count} articles from #{SOURCE_NAME}"
-      articles
+      article_elements.each do |article_element|
+        # Extract article details
+        title_element = article_element.css('h3').first
+        next unless title_element
+
+        title = title_element.text.strip
+        link = title_element.css('a').first['href'] rescue nil
+        next unless link
+
+        # Make sure the URL is absolute
+        url = link.start_with?('http') ? link : "https://uxplanet.org#{link}"
+
+        # Extract date
+        date_element = article_element.css('time').first
+        date_str = date_element ? date_element['datetime'] : nil
+        published_at = date_str ? Time.parse(date_str).to_date : nil
+
+        # Skip if no date or outside range
+        next unless published_at
+        next unless within_date_range?(published_at)
+
+        # Extract author
+        author_element = article_element.css('.author').first
+        author = author_element ? author_element.text.strip : "UX Planet"
+
+        # Extract summary
+        summary_element = article_element.css('p').first
+        summary = summary_element ? summary_element.text.strip : ""
+
+        article_attributes = {
+          title: title,
+          url: url,
+          published_at: published_at,
+          source: SOURCE_NAME,
+          author: author,
+          summary: summary
+        }
+
+        articles << save_article(article_attributes)
+      end
+
+      # Check if we found any articles in the date range
+      oldest_date = articles.map(&:published_at).min
+      if oldest_date && oldest_date < from_date
+        puts "Reached articles older than requested date range"
+        continue_scraping = false
+      else
+        page += 1
+      end
+    else
+      puts "Failed to fetch page #{page}: #{response.code}"
+      break
     end
   end
+
+  articles
 end
