@@ -1,6 +1,7 @@
 <!-- Debug Information Section -->
 <div style="background-color: yellow; padding: 10px;">
   <h3>Debug Information</h3>
+  <p>SQL Query: <%= @articles.to_sql %></p>
   <p>Full Params: <%= params.inspect %></p>
   <p>Selected Source: <%= params[:source].inspect %></p>
   <p>Total Articles: <%= @articles.count %></p>

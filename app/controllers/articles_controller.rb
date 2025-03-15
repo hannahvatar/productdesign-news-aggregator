@@ -14,19 +14,9 @@ class ArticlesController < ApplicationController
     @articles = Article.where.not(source: excluded_sources)
                        .order(published_at: :desc)
 
-    # Apply source filter if provided
+    # Apply source filter if provided - SIMPLIFIED for exact matching
     if params[:source].present? && params[:source] != "All Sources"
-      # More robust source matching
-      @articles = @articles.where(
-        "source ILIKE ? OR
-         source LIKE ? OR
-         TRIM(source) = ? OR
-         LOWER(TRIM(source)) = LOWER(?)",
-        params[:source],
-        "%#{params[:source]}%",
-        params[:source].strip,
-        params[:source].strip
-      )
+      @articles = @articles.where(source: params[:source])
     end
 
     # Special handling for UX Planet to show all articles regardless of date
@@ -38,7 +28,10 @@ class ArticlesController < ApplicationController
         begin
           start_date = Date.parse(params[:start_date])
           end_date = Date.parse(params[:end_date])
-          @articles = @articles.where(published_at: start_date..end_date)
+
+          # Use separate where clauses instead of a range
+          @articles = @articles.where('published_at >= ?', start_date)
+          @articles = @articles.where('published_at <= ?', end_date)
         rescue ArgumentError => e
           flash.now[:alert] = "Invalid date format. Using default date range."
         end
@@ -49,6 +42,10 @@ class ArticlesController < ApplicationController
         @default_date_filter = true
         @start_date = Date.new(2025, 1, 1)  # Go back to January 1, 2025
         @end_date = Date.today
+
+        # Apply default date filter using separate where clauses
+        @articles = @articles.where('published_at >= ?', @start_date)
+        @articles = @articles.where('published_at <= ?', @end_date)
       else
         @default_date_filter = false
         @start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : nil
