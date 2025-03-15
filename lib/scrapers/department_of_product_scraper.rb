@@ -83,7 +83,7 @@ module Scrapers
       end
 
       # Process each article data
-      articles_data.each do |url, data|
+      articles_data.each_value do |data|
         article = process_article_data(data)
         articles << article if article
       end

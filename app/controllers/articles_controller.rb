@@ -14,7 +14,7 @@ class ArticlesController < ApplicationController
       @articles = @articles.where(source: params[:selected_sources])
     end
 
-    # Apply TLDR-specific limiting
+    # Apply TLDR-specific limiting - safely handle empty article lists
     if params[:tldr_max_articles].present? && params[:tldr_max_articles].to_i > 0
       max_per_day = params[:tldr_max_articles].to_i
 
@@ -24,31 +24,36 @@ class ArticlesController < ApplicationController
                                .map(&:to_date)
                                .uniq
 
-      # Collect article IDs to include
-      article_ids_to_include = []
+      # Only proceed if we have TLDR articles
+      if dates_with_tldr.any?
+        # Collect article IDs to include
+        article_ids_to_include = []
 
-      dates_with_tldr.each do |date|
-        # Get IDs of articles for this date, limited to max_per_day
-        day_article_ids = @articles.where(source: "TLDR Newsletter")
-                                  .where('published_at >= ? AND published_at <= ?',
-                                         date.beginning_of_day,
-                                         date.end_of_day)
-                                  .order(created_at: :desc)
-                                  .limit(max_per_day)
-                                  .pluck(:id)
+        dates_with_tldr.each do |date|
+          # Get IDs of articles for this date, limited to max_per_day
+          day_article_ids = @articles.where(source: "TLDR Newsletter")
+                                    .where('published_at >= ? AND published_at <= ?',
+                                           date.beginning_of_day,
+                                           date.end_of_day)
+                                    .order(created_at: :desc)
+                                    .limit(max_per_day)
+                                    .pluck(:id)
 
-        article_ids_to_include.concat(day_article_ids)
-      end
+          article_ids_to_include.concat(day_article_ids)
+        end
 
-      # Apply the filter for TLDR articles only
-      if article_ids_to_include.any?
-        @articles = @articles.where("(source = 'TLDR Newsletter' AND id IN (?)) OR source != 'TLDR Newsletter'",
-                                article_ids_to_include)
+        # Apply the filter for TLDR articles only if we have TLDR articles
+        if article_ids_to_include.any?
+          @articles = @articles.where("(source = 'TLDR Newsletter' AND id IN (?)) OR source != 'TLDR Newsletter'",
+                                  article_ids_to_include)
+        end
       end
     end
 
-    # Skip date filtering for UX Planet
-    skip_date_filter = params[:selected_sources] == ["UX Planet"]
+    # Skip date filtering for UX Planet only when it's the only selected source
+    skip_date_filter = (params[:selected_sources].is_a?(Array) &&
+                        params[:selected_sources].length == 1 &&
+                        params[:selected_sources][0] == "UX Planet")
 
     unless skip_date_filter
       if params[:start_date].present? && params[:end_date].present?
@@ -97,16 +102,11 @@ class ArticlesController < ApplicationController
   end
 
   def scrape
-    if params[:selected_sources].present? && params[:all_sources] != '1'
-      # Scrape selected sources
-      total = 0
-      params[:selected_sources].each do |source|
-        articles = NewsScraperService.new.scrape_source(source)
-        total += articles.count
-      end
-      flash[:notice] = "Scraped #{total} articles from selected sources"
+    # The scrape method stays as is since it's a POST action
+    if params[:source].present? && params[:source] != "All Sources"
+      articles = NewsScraperService.new.scrape_source(params[:source])
+      flash[:notice] = "Scraped #{articles.count} articles from #{params[:source]}"
     else
-      # Scrape all sources
       results = NewsScraperService.new.scrape_all
       total = results.values.flatten.select { |a| a.is_a?(Article) }.count
       flash[:notice] = "Scraped #{total} articles from all sources"
