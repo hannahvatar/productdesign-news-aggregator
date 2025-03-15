@@ -1,4 +1,3 @@
-# lib/scrapers/ux_matters_rss_scraper.rb
 require_relative 'base_scraper'
 require 'httparty'
 require 'nokogiri'
@@ -37,6 +36,9 @@ module Scrapers
             # Parse publication date
             pub_date_str = item.xpath('./pubDate').text.strip
             published_at = parse_date(pub_date_str) || Date.today
+
+            # Log the parsed date
+            puts "Parsed date: #{published_at}"
 
             # Skip articles outside of date range
             next unless within_date_range?(published_at)
