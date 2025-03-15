@@ -48,7 +48,10 @@ class ArticlesController < ApplicationController
     # If using will_paginate, change this to: @articles = @articles.paginate(page: params[:page], per_page: 20)
     @articles = @articles.page(params[:page]).per(20)
 
-    @sources = Article.distinct.pluck(:source).sort
+    # Remove UX Movement and UX Design Weekly from sources
+    @sources = Article.distinct.pluck(:source)
+               .reject { |source| ['UX Movement', 'UX Design Weekly'].include?(source) }
+               .sort
   end
 
   def show
