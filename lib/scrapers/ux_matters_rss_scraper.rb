@@ -1,7 +1,8 @@
 # lib/scrapers/ux_matters_rss_scraper.rb
 require_relative 'base_scraper'
+require 'httparty'
 require 'nokogiri'
-require 'open-uri'
+require 'chronic'
 
 module Scrapers
   class UxMattersRssScraper < BaseScraper
@@ -14,7 +15,7 @@ module Scrapers
       articles = []
 
       begin
-        # Fetch the RSS feed directly
+        # Fetch the RSS feed
         response = URI.open(
           RSS_URL,
           'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
@@ -29,30 +30,34 @@ module Scrapers
 
         items.each do |item|
           begin
-            # Extract basic information
+            # Extract basic article details from RSS item
             title = item.xpath('./title').text.strip
             url = item.xpath('./link').text.strip
 
             # Parse publication date
             pub_date_str = item.xpath('./pubDate').text.strip
-            published_at = begin
-              DateTime.parse(pub_date_str).to_date
-            rescue
-              Date.today
-            end
+            published_at = parse_date(pub_date_str) || Date.today
 
-            # Skip if outside date range
+            # Skip articles outside of date range
             next unless within_date_range?(published_at)
 
-            # Extract summary
+            # Extract summary (description)
             description = item.xpath('./description').text.strip
             summary = Nokogiri::HTML(description).text.strip[0..300]
 
-            # Try to extract image from description
-            doc = Nokogiri::HTML(description)
-            image_url = doc.at('img')&.[]('src')
+            # Process the article page content if necessary
+            article_content = nil
+            begin
+              article_response = HTTParty.get(url)
+              article_doc = Nokogiri::HTML(article_response.body)
 
-            # Default author
+              # If needed, customize the selector based on the actual article page
+              article_content = article_doc.css('div.article-content').text.strip
+            rescue => e
+              puts "Error processing article page: #{e.message}"
+            end
+
+            # Default author for the source
             author = "UX Matters"
 
             article_attributes = {
@@ -62,10 +67,10 @@ module Scrapers
               source: SOURCE_NAME,
               author: author,
               summary: summary,
-              image_url: image_url
+              content: article_content # Assuming content is optional
             }
 
-            # Save article
+            # Save the article using BaseScraper's save method
             article = save_article(article_attributes)
             articles << article if article
           rescue => e
