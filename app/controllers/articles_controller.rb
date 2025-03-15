@@ -3,13 +3,12 @@ class ArticlesController < ApplicationController
   # Remove any authentication-related code
 
   def index
-
+    # Define excluded sources at the top for easy maintenance
     excluded_sources = ['UX Design Weekly', 'UX Movement']
 
+    # Start with base query to exclude unwanted sources
     @articles = Article.where.not(source: excluded_sources)
-               .or(Article.where.not("source LIKE '%UX Design Weekly%'"))
-               .or(Article.where.not("source LIKE '%UX Movement%'"))
-               .order(published_at: :desc)
+                       .order(published_at: :desc)
 
     # Apply source filter if provided
     if params[:source].present? && params[:source] != "All Sources"
@@ -17,7 +16,6 @@ class ArticlesController < ApplicationController
     end
 
     # Special handling for UX Planet to show all articles regardless of date
-    # Only skip date filtering for UX Planet specifically
     skip_date_filter = params[:source] == "UX Planet"
 
     # Apply date filtering for other sources or when no source filter is applied
@@ -32,7 +30,7 @@ class ArticlesController < ApplicationController
         end
       end
 
-      # Add default date range if none specified (last 30 days)
+      # Add default date range if none specified
       if !params[:start_date].present? && !params[:end_date].present?
         @default_date_filter = true
         @start_date = Date.new(2025, 1, 1)  # Go back to January 1, 2025
@@ -50,14 +48,12 @@ class ArticlesController < ApplicationController
     @latest_date = @articles.maximum(:published_at)
 
     # Add pagination (20 articles per page)
-    # Make sure you have the kaminari gem installed: gem 'kaminari'
-    # If using will_paginate, change this to: @articles = @articles.paginate(page: params[:page], per_page: 20)
     @articles = @articles.page(params[:page]).per(20)
 
-    # Remove UX Movement and UX Design Weekly from sources
+    # Generate sources, excluding specified sources
     @sources = Article.distinct.pluck(:source)
-               .reject { |source| ['UX Movement', 'UX Design Weekly'].include?(source) }
-               .sort
+                      .reject { |source| excluded_sources.include?(source) }
+                      .sort
   end
 
   def show

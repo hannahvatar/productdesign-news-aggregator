@@ -30,8 +30,6 @@ class NewsScraperService
   end
 
   def scrape_source(source_name)
-    return [] if EXCLUDED_SOURCES.include?(source_name)
-
     scraper_class = find_scraper_for_source(source_name)
     return [] unless scraper_class
 
