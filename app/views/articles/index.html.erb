@@ -1,7 +1,11 @@
 <!-- Add this near the top of your view -->
-<div style="background-color: yellow; padding: 10px; margin-bottom: 20px;">
-  <h3>Debug Sources</h3>
+<!-- Add this near the top of your view -->
+<div style="background-color: yellow; padding: 10px;">
+  <h3>Debug Information</h3>
+  <p>Selected Source: <%= params[:source].inspect %></p>
+  <p>Total Articles: <%= @articles.count %></p>
   <p>Sources: <%= @sources.inspect %></p>
+  <p>Date Range: <%= @start_date %> to <%= @end_date %></p>
 </div>
 
 <div class="container mx-auto px-4 py-8">
