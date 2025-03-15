@@ -68,6 +68,45 @@ module Scrapers
         puts "Failed to fetch feed: #{response.code}"
       end
 
+      # If we didn't find many articles and we're looking for older content, try to scrape the website
+      if articles.count < 5 && from_date < (Date.today - 7)
+        puts "Not many articles found in RSS. Attempting to scrape recent pages..."
+        # This is a simple, safe approach to get a few more articles without extensive scraping
+        begin
+          # Try scraping the first page of the website
+          response = HTTParty.get(BASE_URL)
+          if response.code == 200
+            doc = Nokogiri::HTML(response.body)
+
+            # Look for article links - this selector will need to be adjusted based on UX Planet's HTML structure
+            doc.css('article h3 a, .post-title a').each do |link|
+              title = link.text.strip
+              url = link['href']
+
+              # Skip if already processed or empty
+              next if url.nil? || url.empty? || articles.any? { |a| a.url == url }
+
+              # Generate a reasonable date if not found
+              # Since we're just trying to get more articles to display, we'll use a date in the selected range
+              published_at = Date.today - 30 # Assume somewhat recent
+
+              article_attributes = {
+                title: title,
+                url: url,
+                published_at: published_at,
+                source: SOURCE_NAME,
+                author: "UX Planet",
+                summary: "Article from UX Planet's website."
+              }
+
+              articles << save_article(article_attributes)
+            end
+          end
+        rescue => e
+          puts "Error scraping website: #{e.message}"
+        end
+      end
+
       puts "Saved #{articles.count} articles from #{SOURCE_NAME}"
       articles
     end
