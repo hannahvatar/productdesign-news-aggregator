@@ -2,11 +2,15 @@ require_relative 'base_scraper'
 require 'httparty'
 require 'nokogiri'
 require 'chronic'
+require 'open-uri'  # Add this line to require open-uri
 
 module Scrapers
   class UxMattersRssScraper < BaseScraper
     SOURCE_NAME = "UX Matters"
     RSS_URL = "https://rss.app/feeds/HgtKv6iccCcVE38g.xml"
+
+    # Define the start date for filtering articles
+    START_DATE = Date.new(2025, 1, 1)
 
     def scrape
       puts "Starting RSS scrape for: #{SOURCE_NAME}"
@@ -15,7 +19,7 @@ module Scrapers
 
       begin
         # Fetch the RSS feed
-        response = URI.open(
+        response = OpenURI.open_uri(
           RSS_URL,
           'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
         )
@@ -87,6 +91,11 @@ module Scrapers
 
       puts "Saved #{articles.count} articles from #{SOURCE_NAME}"
       articles
+    end
+
+    # Check if the article's published date is within the desired date range
+    def within_date_range?(published_at)
+      published_at >= START_DATE && published_at <= Date.today
     end
   end
 end
