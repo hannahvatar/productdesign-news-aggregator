@@ -3,18 +3,7 @@ class ArticlesController < ApplicationController
   # Remove any authentication-related code
 
   def index
-    # Log all sources before filtering
-    logger.debug "DEBUG: All sources before filtering: #{Article.distinct.pluck(:source)}"
-
-    # Explicitly exclude problematic sources from the start
-    excluded_sources = ['UX Movement', 'UX Design Weekly']
-    logger.debug "DEBUG: Excluding sources: #{excluded_sources}"
-
-    # Start with all articles, excluding specific sources
-    @articles = Article.where.not(source: excluded_sources).order(published_at: :desc)
-
-    # Log remaining sources after source exclusion
-    logger.debug "DEBUG: Sources after initial filtering: #{@articles.distinct.pluck(:source)}"
+    @articles = Article.order(published_at: :desc)
 
     # Apply source filter if provided
     if params[:source].present? && params[:source] != "All Sources"
@@ -49,26 +38,20 @@ class ArticlesController < ApplicationController
       end
     end
 
-    # Add debugging logs for articles
-    logger.debug "DEBUG: Total articles after filtering: #{@articles.count}"
-    logger.debug "DEBUG: Article sources after filtering: #{@articles.distinct.pluck(:source)}"
-
     # Add some debugging information
     @total_count = @articles.count
     @earliest_date = @articles.minimum(:published_at)
     @latest_date = @articles.maximum(:published_at)
 
     # Add pagination (20 articles per page)
+    # Make sure you have the kaminari gem installed: gem 'kaminari'
+    # If using will_paginate, change this to: @articles = @articles.paginate(page: params[:page], per_page: 20)
     @articles = @articles.page(params[:page]).per(20)
 
     # Remove UX Movement and UX Design Weekly from sources
     @sources = Article.distinct.pluck(:source)
-               .reject { |source| excluded_sources.include?(source) }
+               .reject { |source| ['UX Movement', 'UX Design Weekly'].include?(source) }
                .sort
-
-    # Final source and count logging
-    logger.debug "DEBUG: Final sources in dropdown: #{@sources}"
-    logger.debug "DEBUG: Final article count: #{@articles.count}"
   end
 
   def show
@@ -76,20 +59,11 @@ class ArticlesController < ApplicationController
   end
 
   def scrape
-    # Prevent scraping for excluded sources
-    excluded_sources = ['UX Movement', 'UX Design Weekly']
-
     if params[:source].present? && params[:source] != "All Sources"
-      # Check if the source is not in excluded sources
-      if excluded_sources.include?(params[:source])
-        flash[:alert] = "Scraping is not allowed for this source."
-        return redirect_to articles_path
-      end
-
       articles = NewsScraperService.new.scrape_source(params[:source])
       flash[:notice] = "Scraped #{articles.count} articles from #{params[:source]}"
     else
-      results = NewsScraperService.new.scrape_all(excluded_sources: excluded_sources)
+      results = NewsScraperService.new.scrape_all
       total = results.values.flatten.select { |a| a.is_a?(Article) }.count
       flash[:notice] = "Scraped #{total} articles from all sources"
     end
