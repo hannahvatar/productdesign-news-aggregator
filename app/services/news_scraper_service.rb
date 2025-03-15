@@ -10,7 +10,8 @@ class NewsScraperService
       Scrapers::UxPlanetScraper,
       Scrapers::UxMattersScraper,
       Scrapers::UxCollectiveScraper,
-      Scrapers::DepartmentOfProductScraper
+      Scrapers::DepartmentOfProductScraper,
+      Scrapers::TldrNewsletterScraper  # Add this line
     ]
 
     results = {}
@@ -39,17 +40,19 @@ class NewsScraperService
 
   private
 
-  def find_scraper_for_source(source_name)
-    scraper_classes = [
-      Scrapers::SmashingMagazineScraper,
-      Scrapers::NnGroupScraper,
-      Scrapers::FigmaBlogScraper,
-      Scrapers::UxPlanetScraper,
-      Scrapers::UxMattersScraper,
-      Scrapers::UxCollectiveScraper,
-      Scrapers::DepartmentOfProductScraper
-    ]
+# In app/services/news_scraper_service.rb
+def find_scraper_for_source(source_name)
+  scraper_classes = [
+    Scrapers::SmashingMagazineScraper,
+    Scrapers::NnGroupScraper,
+    Scrapers::FigmaBlogScraper,
+    Scrapers::UxPlanetScraper,
+    Scrapers::UxMattersScraper,
+    Scrapers::UxCollectiveScraper,
+    Scrapers::DepartmentOfProductScraper,
+    Scrapers::TldrNewsletterScraper  # Add this line
+  ]
 
-    scraper_classes.find { |klass| klass.const_get(:SOURCE_NAME) == source_name }
-  end
+  scraper_classes.find { |klass| klass.const_get(:SOURCE_NAME) == source_name }
+end
 end
