@@ -5,6 +5,7 @@ class ArticlesController < ApplicationController
   def index
     # Log initial sources
     Rails.logger.debug "DEBUG: All sources in database: #{Article.distinct.pluck(:source)}"
+    Rails.logger.debug "DEBUG: Selected source: #{params[:source]}"
 
     # Define excluded sources at the top for easy maintenance
     excluded_sources = ['UX Design Weekly', 'UX Movement']
@@ -15,7 +16,8 @@ class ArticlesController < ApplicationController
 
     # Apply source filter if provided
     if params[:source].present? && params[:source] != "All Sources"
-      @articles = @articles.where(source: params[:source])
+      # Use case-insensitive matching to handle potential variations
+      @articles = @articles.where("source ILIKE ?", params[:source])
     end
 
     # Special handling for UX Planet to show all articles regardless of date
@@ -63,9 +65,11 @@ class ArticlesController < ApplicationController
     @sources << "UX Matters" unless @sources.include?("UX Matters")
     @sources.sort!
 
-    # Log final sources and article count
+    # Log additional debugging information
     Rails.logger.debug "DEBUG: Sources after filtering: #{@sources}"
     Rails.logger.debug "DEBUG: Total articles: #{@total_count}"
+    Rails.logger.debug "DEBUG: Filtered articles count: #{@articles.count}"
+    Rails.logger.debug "DEBUG: Date range: #{@earliest_date} to #{@latest_date}"
   end
 
   def show
