@@ -84,4 +84,28 @@ class ArticlesController < ApplicationController
 
     redirect_to articles_path
   end
+
+  def generate_summaries
+    if params[:all] == 'true'
+      count = Article.where("summary IS NULL OR LENGTH(summary) < 30").limit(100).count
+      flash[:notice] = "Starting summary generation for up to #{count} articles. This may take some time."
+
+      Article.where("summary IS NULL OR LENGTH(summary) < 30").limit(100).each do |article|
+        ArticleSummarizationJob.perform_later(article.id)
+      end
+    else
+      # Generate for a single article
+      article_id = params[:id]
+      article = Article.find_by(id: article_id)
+
+      if article
+        ArticleSummarizationJob.perform_later(article.id)
+        flash[:notice] = "Summary generation started for '#{article.title}'"
+      else
+        flash[:alert] = "Article not found"
+      end
+    end
+
+    redirect_back(fallback_location: articles_path)
+  end
 end

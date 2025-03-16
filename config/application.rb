@@ -25,6 +25,9 @@ module ProductdesignNewsAggregator
     # Add lib directory to autoload paths
     config.autoload_paths += %W(#{config.root}/lib)
 
+    # Configure Active Job to use Sidekiq
+    config.active_job.queue_adapter = :sidekiq
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files

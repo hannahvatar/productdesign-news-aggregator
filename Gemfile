@@ -57,6 +57,8 @@ gem 'nokogiri'
 gem 'httparty'
 gem 'sidekiq'
 gem 'chronic'
+gem 'ruby-openai'
+
 
 group :development, :test do
   gem "dotenv-rails"
