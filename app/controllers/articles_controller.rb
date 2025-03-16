@@ -26,13 +26,13 @@ class ArticlesController < ApplicationController
           @end_date = Date.parse(params[:end_date])
           @articles = @articles.where('published_at >= ?', @start_date.beginning_of_day)
                                .where('published_at <= ?', @end_date.end_of_day)
-        rescue ArgumentError => e
+        rescue ArgumentError
           flash.now[:alert] = "Invalid date format. Using default date range."
           @default_date_filter = true
           @start_date = Date.new(2025, 1, 1)
           @end_date = Date.today
           @articles = @articles.where('published_at >= ?', @start_date.beginning_of_day)
-                               .where('published_at <= ?', @end_date.end_of_day)
+                        .where('published_at <= ?', @end_date.end_of_day)
         end
       else
         @default_date_filter = true
