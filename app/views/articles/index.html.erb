@@ -1,10 +1,8 @@
-<!-- Debug information -->
-<% if Rails.env.development? %>
-  <div class="bg-gray-100 p-4 mb-4">
-    <h3 class="text-sm font-bold">Debug Info:</h3>
-    <p class="text-xs">Sources: <%= @sources.inspect %></p>
-  </div>
-<% end %>
+<!-- Debug information (visible in all environments) -->
+<div class="bg-gray-100 p-4 mb-4">
+  <h3 class="text-sm font-bold">Debug Info:</h3>
+  <p class="text-xs">Sources: <%= @sources.inspect %></p>
+</div>
 
 <div class="container mx-auto px-4 py-8">
   <h1 class="text-3xl font-bold mb-6">Test Product Design News Aggregator</h1>
