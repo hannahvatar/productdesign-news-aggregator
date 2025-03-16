@@ -1,11 +1,9 @@
-<div class="container mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold mb-6">Product Design News Aggregator</h1>
+<div class="container-main">
+  <h1 class="text-3xl font-bold mb-6">Product Design Daily</h1>
 
   <!-- Filter & Control Section -->
   <div class="mb-8 bg-white rounded-lg shadow p-6">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold">Filter & Control</h2>
-    </div>
+
 
     <%= form_tag articles_path, method: :get, class: "flex flex-wrap gap-4" do %>
       <!-- Source selection with checkboxes -->
@@ -186,32 +184,25 @@
 
 <!-- JavaScript for checkbox functionality -->
 <script>
-  function toggleAllSources(checked) {
-    const sourceCheckboxes = document.querySelectorAll('.source-checkbox');
-    sourceCheckboxes.forEach(checkbox => {
-      checkbox.checked = !checked;
-      checkbox.disabled = checked;
-    });
-  }
-
-  // Initialize on page load
   document.addEventListener('DOMContentLoaded', function() {
     const allSourcesCheckbox = document.querySelector('input[name="all_sources"]');
-    if (allSourcesCheckbox) {
-      toggleAllSources(allSourcesCheckbox.checked);
-    }
-
-    // When any source checkbox is clicked, uncheck the "All Sources" option
     const sourceCheckboxes = document.querySelectorAll('.source-checkbox');
+
+    // All Sources checkbox event listener
+    allSourcesCheckbox.addEventListener('change', function() {
+      sourceCheckboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+      });
+    });
+
+    // When any source checkbox is clicked, uncheck the "All Sources" checkbox
     sourceCheckboxes.forEach(checkbox => {
       checkbox.addEventListener('change', function() {
-        if (this.checked && allSourcesCheckbox.checked) {
-          allSourcesCheckbox.checked = false;
-          // Enable all checkboxes
-          sourceCheckboxes.forEach(cb => {
-            cb.disabled = false;
-          });
-        }
+        // Check if all source checkboxes are checked
+        const allChecked = Array.from(sourceCheckboxes).every(cb => cb.checked);
+
+        // Update "All Sources" checkbox based on individual checkbox states
+        allSourcesCheckbox.checked = allChecked;
       });
     });
   });

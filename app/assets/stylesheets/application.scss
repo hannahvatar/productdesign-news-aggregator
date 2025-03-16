@@ -10,3 +10,28 @@
 // Your CSS partials
 @import "components/index";
 @import "pages/index";
+
+// Literata <weight>: Use a value from 200 to 900
+
+h1 {
+  font-family: "Literata", serif;
+  font-size: 2rem;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+}
+
+body {
+  background-color: white;
+}
+
+.container-main {
+  display: flex;
+  flex-direction: column;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  background-color: white;
+}
