@@ -12,7 +12,8 @@ class NewsScraperService
       Scrapers::UxCollectiveScraper,
       Scrapers::DepartmentOfProductScraper,
       Scrapers::TldrApiScraper,
-      Scrapers::FigmaReleaseNotesScraper
+      Scrapers::FigmaReleaseNotesScraper,
+      Scrapers::PrototyprScraper
     ]
 
     results = {}
@@ -52,7 +53,8 @@ def find_scraper_for_source(source_name)
     Scrapers::UxCollectiveScraper,
     Scrapers::DepartmentOfProductScraper,
     Scrapers::TldrApiScraper,
-    Scrapers::FigmaReleaseNotesScraper
+    Scrapers::FigmaReleaseNotesScraper,
+    Scrapers::PrototyprScraper
   ]
 
   scraper_classes.find { |klass| klass.const_get(:SOURCE_NAME) == source_name }
