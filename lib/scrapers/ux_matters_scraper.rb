@@ -33,6 +33,9 @@ module Scrapers
             # Skip if we don't have basic information
             next unless title && url && !title.empty? && !url.empty?
 
+            # Clean up title by removing ":: UXmatters" suffix
+            title = title.gsub(/\s*::\s*UXmatters$/, '') if title.include?(":: UXmatters")
+
             puts "Processing article: #{title}"
 
             # Extract date
@@ -78,6 +81,12 @@ module Scrapers
 
             # Remove author information if it appears at the beginning
             summary = summary.sub(/^by\s+[^\.]+\.\s*/i, '')
+
+            # Check for the generic UX Matters description and ignore it
+            if summary == "Web magazine about user experience matters, providing insights and inspiration for the user experience community" ||
+               summary.include?("Web magazine about user experience matters")
+              summary = ""
+            end
 
             # Truncate if too long
             if summary.length > 300
